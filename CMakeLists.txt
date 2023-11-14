@@ -4,6 +4,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 project(awoonya)
 
+include(cmake/cflags.cmake)
+
 find_package(DPP REQUIRED)
 
 add_executable(${PROJECT_NAME} main.cpp)

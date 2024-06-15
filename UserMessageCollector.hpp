@@ -4,7 +4,7 @@
 #include <dpp/collector.h>
 #include <dpp/snowflake.h>
 
-extern dpp::cluster g_bot;
+extern dpp::cluster& g_bot();
 
 using UserMessageCollector_t =
   dpp::collector<dpp::message_create_t, dpp::snowflake>;
@@ -27,7 +27,7 @@ struct UserMessageCollector : UserMessageCollector_t
 
   virtual void completed(const std::vector<dpp::snowflake>& list) override
   {
-    g_bot.message_delete_bulk(list, m_channelId);
+    g_bot().message_delete_bulk(list, m_channelId);
   }
 
   virtual const dpp::snowflake* filter(

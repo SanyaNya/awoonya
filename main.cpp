@@ -8,7 +8,14 @@
 #include <dpp/unicode_emoji.h>
 #include "UserMessageCollector.hpp"
 
-dpp::cluster g_bot(std::getenv("BOT_TOKEN"));
+dpp::cluster& g_bot()
+{
+  const char* token = "MTE3MzU5ODA5MzcxNTk3MjA5Ng.GKvUjz.r2sQzxTt-uLSG2Dr_"
+                      "Ev5yzL-Cef2Xe8rhtDL7Q"; //= std::getenv("BOT_TOKEN");
+  static dpp::cluster bot(token);
+  return bot;
+}
+
 std::unordered_map<dpp::snowflake, std::unique_ptr<UserMessageCollector>>
   rmMyMsgLaterUserMessages;
 
@@ -16,13 +23,17 @@ std::unordered_map<dpp::snowflake, std::unique_ptr<UserMessageCollector>>
 void on_slashcommand(const dpp::slashcommand_t& event)
 {
   std::cout << "Command: " << event.command.get_command_name() << "\n";
-  if (
-    event.command.get_command_name() == "rm_my_msg_later" &&
-    event.command.channel.is_voice_channel())
+  if (event.command.get_command_name() == "rm_my_msg_later")
   {
+    if (!event.command.channel.is_voice_channel())
+    {
+      event.reply(dpp::message("Вы не можете использовать эту команду здесь"));
+      return;
+    }
+
     dpp::snowflake userId = event.command.get_issuing_user().id;
     auto msg_collector = std::make_unique<UserMessageCollector>(
-      &g_bot,
+      &g_bot(),
       std::numeric_limits<std::uint64_t>::max(),
       userId,
       event.command.channel_id);
@@ -41,10 +52,10 @@ void on_ready(const dpp::ready_t&)
   if (dpp::run_once<struct register_commands_tag>())
   {
     std::cout << "Registering commands...\n";
-    g_bot.global_command_create(dpp::slashcommand(
+    g_bot().global_command_create(dpp::slashcommand(
       "rm_my_msg_later",
       "Удалить ваши сообщения в голосовом канале после выхода",
-      g_bot.me.id));
+      g_bot().me.id));
   }
 }
 
@@ -61,10 +72,17 @@ void on_voice_client_disconnect(const dpp::voice_client_disconnect_t& event)
 int main()
 {
   // Set callbacks
-  g_bot.on_log(dpp::utility::cout_logger());
-  g_bot.on_slashcommand(on_slashcommand);
-  g_bot.on_ready(on_ready);
-  g_bot.on_voice_client_disconnect(on_voice_client_disconnect);
+  g_bot().on_log(dpp::utility::cout_logger());
+  g_bot().on_slashcommand(on_slashcommand);
+  g_bot().on_ready(on_ready);
+  g_bot().on_voice_client_disconnect(on_voice_client_disconnect);
 
-  g_bot.start(dpp::st_wait);
+  try
+  {
+    g_bot().start(dpp::st_wait);
+  }
+  catch (const std::exception& e)
+  {
+    std::cerr << "Exception: " << e.what() << std::endl;
+  }
 }

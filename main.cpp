@@ -10,9 +10,10 @@
 
 dpp::cluster& g_bot()
 {
+  uint32_t intents = dpp::i_default_intents | dpp::i_message_content;
   const char* token = "MTE3MzU5ODA5MzcxNTk3MjA5Ng.GKvUjz.r2sQzxTt-uLSG2Dr_"
                       "Ev5yzL-Cef2Xe8rhtDL7Q"; //= std::getenv("BOT_TOKEN");
-  static dpp::cluster bot(token);
+  static dpp::cluster bot(token, intents);
   return bot;
 }
 
@@ -27,21 +28,58 @@ void on_slashcommand(const dpp::slashcommand_t& event)
   {
     if (!event.command.channel.is_voice_channel())
     {
-      event.reply(dpp::message("Вы не можете использовать эту команду здесь"));
+      event.reply(dpp::message("Вы не можете использовать эту команду здесь")
+                    .set_flags(dpp::m_ephemeral));
       return;
     }
 
     dpp::snowflake userId = event.command.get_issuing_user().id;
     auto msg_collector = std::make_unique<UserMessageCollector>(
-      &g_bot(),
-      std::numeric_limits<std::uint64_t>::max(),
-      userId,
-      event.command.channel_id);
+      &g_bot(), 3600, userId, event.command.channel_id);
 
     rmMyMsgLaterUserMessages.emplace(userId, std::move(msg_collector));
 
-    event.reply(dpp::message(
-      "Ваши сообщения в этом голосовом канале будут удалены когда вы выйдете"));
+    // join channel
+
+    dpp::guild* g = dpp::find_guild(event.command.guild_id);
+    auto current_vc = event.from->get_voice(event.command.guild_id);
+    bool join_vc = true;
+
+    if (current_vc)
+    {
+      auto users_vc =
+        g->voice_members.find(event.command.get_issuing_user().id);
+
+      if (
+        users_vc != g->voice_members.end() &&
+        current_vc->channel_id == users_vc->second.channel_id)
+      {
+        join_vc = false;
+      }
+      else
+      {
+        event.from->disconnect_voice(event.command.guild_id);
+
+        join_vc = true;
+      }
+    }
+
+    if (join_vc)
+    {
+      std::cout << "Joining new VC!\n";
+      if (!g->connect_member_voice(event.command.get_issuing_user().id))
+      {
+        event.reply(dpp::message("Вы не находитесь ни в каком канале!")
+                      .set_flags(dpp::m_ephemeral));
+        return;
+      }
+    }
+    dpp::message reply("Ваши сообщения будут удалены после того как вы "
+                       "отключитесь от голосового канала");
+
+    reply.set_flags(dpp::m_ephemeral);
+
+    event.reply(reply);
   }
 }
 
@@ -61,6 +99,7 @@ void on_ready(const dpp::ready_t&)
 
 void on_voice_client_disconnect(const dpp::voice_client_disconnect_t& event)
 {
+  std::cout << "User disconnected\n";
   auto it = rmMyMsgLaterUserMessages.find(event.user_id);
   if (it != rmMyMsgLaterUserMessages.end())
   {

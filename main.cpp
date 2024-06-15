@@ -1,61 +1,70 @@
+#include <limits>
+#include <unordered_map>
+#include <functional>
+#include <memory>
 #include <dpp/dpp.h>
+#include <dpp/snowflake.h>
+#include <dpp/queues.h>
 #include <dpp/unicode_emoji.h>
+#include "UserMessageCollector.hpp"
+
+dpp::cluster g_bot(std::getenv("BOT_TOKEN"));
+std::unordered_map<dpp::snowflake, std::unique_ptr<UserMessageCollector>>
+  rmMyMsgLaterUserMessages;
+
+// Call when some command(e.g. /call_houkz xd) was executed
+void on_slashcommand(const dpp::slashcommand_t& event)
+{
+  std::cout << "Command: " << event.command.get_command_name() << "\n";
+  if (
+    event.command.get_command_name() == "rm_my_msg_later" &&
+    event.command.channel.is_voice_channel())
+  {
+    dpp::snowflake userId = event.command.get_issuing_user().id;
+    auto msg_collector = std::make_unique<UserMessageCollector>(
+      &g_bot,
+      std::numeric_limits<std::uint64_t>::max(),
+      userId,
+      event.command.channel_id);
+
+    rmMyMsgLaterUserMessages.emplace(userId, std::move(msg_collector));
+
+    event.reply(dpp::message(
+      "Ваши сообщения в этом голосовом канале будут удалены когда вы выйдете"));
+  }
+}
+
+// Call when bot was done initialization
+void on_ready(const dpp::ready_t&)
+{
+  std::cout << "bot is ready!\n";
+  if (dpp::run_once<struct register_commands_tag>())
+  {
+    std::cout << "Registering commands...\n";
+    g_bot.global_command_create(dpp::slashcommand(
+      "rm_my_msg_later",
+      "Удалить ваши сообщения в голосовом канале после выхода",
+      g_bot.me.id));
+  }
+}
+
+void on_voice_client_disconnect(const dpp::voice_client_disconnect_t& event)
+{
+  auto it = rmMyMsgLaterUserMessages.find(event.user_id);
+  if (it != rmMyMsgLaterUserMessages.end())
+  {
+    it->second->cancel();
+    rmMyMsgLaterUserMessages.erase(it);
+  }
+}
 
 int main()
 {
-    dpp::cluster bot(std::getenv("BOT_TOKEN"));
+  // Set callbacks
+  g_bot.on_log(dpp::utility::cout_logger());
+  g_bot.on_slashcommand(on_slashcommand);
+  g_bot.on_ready(on_ready);
+  g_bot.on_voice_client_disconnect(on_voice_client_disconnect);
 
-    bot.on_log(dpp::utility::cout_logger());
-
-    bot.on_slashcommand([](const dpp::slashcommand_t& event)
-    {
-        std::cout << "Command: " << event.command.get_command_name() << "\n";
-        if(event.command.get_command_name() == "call_houkz")
-        {
-            dpp::message msg(event.command.channel_id, "");
-	            
-            msg.add_component(
-                dpp::component().add_component(
-                    dpp::component()
-                        .set_label("Звонок Хоукзу")
-                        .set_type(dpp::cot_button)
-                        .set_emoji(dpp::unicode_emoji::smile)
-                        .set_style(dpp::cos_danger)
-                        .set_id("call_houkz_button_id")
-                )
-            );
-    
-            event.reply(msg);
-        }
-    });
-
-    bot.on_button_click([&bot](const dpp::button_click_t& event)
-    {
-        std::cout << "button: " << event.custom_id << "\n";
-        if(event.custom_id == "call_houkz_button_id")
-        {
-            event.reply(dpp::message("Уведомляем Хоукза...").set_flags(dpp::m_ephemeral));
-
-            const auto guild_id = event.command.get_guild().id;
-            const auto member_map = bot.guild_search_members_sync(guild_id, "Dim'ya", 1);
-            const auto houkz_id = member_map.begin()->first;
-
-            bot.direct_message_create(
-                houkz_id, 
-                dpp::message("Хоукз, " + event.command.get_issuing_user().global_name + " хочет с вами связаться"), 
-                [](const dpp::confirmation_callback_t& cb){});
-        }
-	});
-
-    bot.on_ready([&bot](const dpp::ready_t& event)
-    {
-        std::cout << "Bot is ready!\n";
-        if(dpp::run_once<struct register_commands_tag>())
-        {
-            std::cout << "Registering commands...\n";
-            bot.global_command_create(dpp::slashcommand("call_houkz", "Лучше звоните Хоукзу", bot.me.id));
-        }
-    });
-
-    bot.start(dpp::st_wait);
+  g_bot.start(dpp::st_wait);
 }

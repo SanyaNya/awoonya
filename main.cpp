@@ -11,8 +11,7 @@
 dpp::cluster& g_bot()
 {
   uint32_t intents = dpp::i_default_intents | dpp::i_message_content;
-  const char* token = "MTE3MzU5ODA5MzcxNTk3MjA5Ng.GKvUjz.r2sQzxTt-uLSG2Dr_"
-                      "Ev5yzL-Cef2Xe8rhtDL7Q"; //= std::getenv("BOT_TOKEN");
+  const char* token = std::getenv("BOT_TOKEN");
   static dpp::cluster bot(token, intents);
   return bot;
 }

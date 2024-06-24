@@ -6,7 +6,7 @@ project(awoonya)
 
 include(cmake/cflags.cmake)
 
-find_package(DPP REQUIRED)
+find_package(dpp CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} main.cpp)
 
@@ -14,5 +14,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED TRUE)
 
-target_link_libraries(${PROJECT_NAME} ${DPP_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${DPP_INCLUDE_DIR})
+target_link_libraries(${PROJECT_NAME} dpp::dpp)

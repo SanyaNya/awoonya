@@ -1,10 +1,6 @@
 #pragma once
 
 #include <dpp/dpp.h>
-#include <dpp/collector.h>
-#include <dpp/snowflake.h>
-
-extern dpp::cluster& g_bot();
 
 using UserMessageCollector_t =
   dpp::collector<dpp::message_create_t, dpp::snowflake>;
@@ -29,27 +25,18 @@ struct UserMessageCollector : UserMessageCollector_t
   {
     std::cout << "Deleting " << list.size() << " messsages\n";
     if (list.size() > 1)
-      g_bot().message_delete_bulk(list, m_channelId);
+      owner->message_delete_bulk(list, m_channelId);
     else if (list.size() == 1)
-      g_bot().message_delete(list.front(), m_channelId);
+      owner->message_delete(list.front(), m_channelId);
   }
 
   virtual const dpp::snowflake* filter(
     const dpp::message_create_t& element) override
   {
-    /*if (
-      element.msg.is_voice_message() || element.msg.has_remix_attachment() ||
-      element.msg.attachments.size() != 0 || element.msg.embeds.size() != 0 ||
-      element.msg.stickers.size() != 0 || element.msg.file_data.size() != 0 ||
-    element.msg.author.id == m_userId)
-    {
-      std::cout << "Filter media content\n";
-      return nullptr;
-    }*/
-
     std::cout << "content: " << element.msg.content
               << " size: " << element.msg.content.size() << std::endl;
 
+    //keep stickers, smiles, links...
     if (
       element.msg.content.empty() || element.msg.content.starts_with('<') ||
       element.msg.content.starts_with("http"))

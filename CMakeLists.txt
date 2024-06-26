@@ -5,7 +5,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 project(awoonya)
 
 include(cmake/cflags.cmake)
-include(cmake/FetchFixedString.cmake)
 
 find_package(dpp CONFIG REQUIRED)
 
@@ -15,4 +14,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED TRUE)
 
-target_link_libraries(${PROJECT_NAME} dpp::dpp fixed_string::fixed_string)
+target_link_libraries(${PROJECT_NAME} dpp::dpp)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

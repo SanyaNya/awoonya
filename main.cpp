@@ -1,4 +1,5 @@
 #include "commands/rm_my_msg_later.hpp"
+#include "commands/kick.hpp"
 #include "Bot/Bot.hpp"
 
 int main()

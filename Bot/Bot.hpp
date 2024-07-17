@@ -86,7 +86,6 @@ private:
       std::apply(
         [&](auto&... cmds) { ((cmds.init_handler(event)), ...); }, m_commands);
 
-      m_bot.global_bulk_command_delete_sync();
       m_bot.global_bulk_command_create_sync(std::apply(
         [](const auto&... cmds)
         { return std::vector<dpp::slashcommand>{ cmds.getSlashCommand()... }; },
